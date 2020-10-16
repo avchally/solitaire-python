@@ -2,6 +2,12 @@
 simple solitaire with python and PyGame
 by: Alex Chally
 solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
+
+TO DO next:
+[ ] Finish and test all of the different pile types
+[ ] Finish TableauGroup and FoundationGroup classes
+[ ] Finish Board class
+
 """
 
 import random
@@ -41,6 +47,15 @@ class Card:
 
 	def set_exposed(self, expose_boolean):
 		self.exposed = expose_boolean
+
+	def flip_card(self):
+		self.exposed = not self.exposed
+
+	def can_move(self):
+		"""
+		method to determine if this card has a legal move somewhere on board
+		"""
+		pass
 
 	def __str__(self):
 		return f'{self.rank}{self.suit}'
@@ -86,13 +101,18 @@ class Pile:
 		self.cards = cards
 		self.stack_style = stack_style
 
-	def remove_cards(self, num_cards):
+	def remove_cards(self, num_cards, flip_cards=False):
 		"""
 		removes the num_cards amount from top (end) of pile 
 		and returns them as another pile object
 		"""
 		temp_list = self.cards[len(self.cards) - num_cards:]
 		self.cards = self.cards[:len(self.cards) - num_cards]
+
+		if flip_cards:
+			for card in temp_list:
+				card.flip_card()
+
 		return Pile(temp_list)
 
 	def merge_pile(self, pile_of_cards):
@@ -112,6 +132,12 @@ class Pile:
 		this method is present to disuade from referencing an object's internal variable directly
 		"""
 		return self.cards
+
+	def get_n_card(self, n):
+		"""
+		gets the nth (from the top) card in the pile, but DOES NOT remove it from pile
+		"""
+		return self.cards[-n]
 
 	def get_topmost_card(self):
 		"""
@@ -137,6 +163,13 @@ class Stock(Pile):
 	def __init__(self):
 		super().__init__([])
 
+	def deal_to_wp(self, wp):
+		"""
+		deals out the top card in the stock to the wastepile
+		"""
+		if len(self.cards) > 0:
+			wp.merge_pile(self.remove_cards(1, True))
+
 
 class Wastepile(Pile):
 	"""
@@ -146,6 +179,12 @@ class Wastepile(Pile):
 
 	def __init__(self):
 		super().__init__([])
+
+	def move_to_stock(self, stock):
+		"""
+		flips cards and puts them all back into the stock
+		"""
+		stock.merge_pile(self.remove_cards(len(self.cards), True))
 
 
 class Foundation(Pile):
@@ -190,6 +229,14 @@ class FoundationGroup:
 
 
 class TableauGroup:
+	pass
+
+
+class Board:
+	pass
+
+
+class Game:
 	pass
 
 
