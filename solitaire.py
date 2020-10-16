@@ -7,7 +7,9 @@ import random
 
 #============= GLOBAL DEFINITIONS =============#
 SUITS = "HSDC"
-RANKS = "123456789TJQK"
+RANKS = "A23456789TJQK"
+RANK_VALUES = {"A": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7,
+			   "8": 8, "9": 9, "T": 10, "J": 11, "Q": 12, "K": 13}
 COLORS = {"H": "red",
 		  "S": "black",
 		  "D": "red",
@@ -21,12 +23,20 @@ class Card:
 		self.suit = suit
 		self.rank = rank
 		self.exposed = exposed
+		self.color = COLORS[self.suit]
+		self.rank_value = RANK_VALUES[self.rank]
 
 	def get_suit(self):
 		return self.suit
 
 	def get_rank(self):
 		return self.rank
+
+	def get_rank_value(self):
+		return self.rank_value
+
+	def get_color(self):
+		return self.color
 
 	def set_exposed(self, expose_boolean):
 		self.exposed = expose_boolean
@@ -41,6 +51,7 @@ class Deck:
 	will only be used at the beginning of the game
 	remaining cards will be made into a Stock object
 	"""
+
 	def __init__(self):
 		self.cards = []
 		for suit in SUITS:
@@ -83,11 +94,17 @@ class Pile:
 		self.cards = self.cards[:len(self.cards) - num_cards]
 		return Pile(temp_list)
 
-	def add_to_pile(self, pile_of_cards):
+	def merge_pile(self, pile_of_cards):
 		"""
 		takes a pile object as input and adds it to the current pile
 		"""
 		self.cards.extend(pile_of_cards.get_card_list())
+
+	def add_card(self, card):
+		"""
+		takes a card object as input and adds it to the current pile
+		"""
+		self.cards.append(card)
 
 	def get_card_list(self):
 		"""
@@ -115,7 +132,10 @@ class Stock(Pile):
 	"""
 	Stock is the official term for the pile that cards are drawn from
 	"""
-	pass
+	
+	def __init__(self):
+		super().__init__([])
+
 
 class Foundation(Pile):
 	"""
@@ -123,13 +143,42 @@ class Foundation(Pile):
 	Game is finished when all Foundations are filled
 	Starts empty
 	"""
-	pass
+	
+	def __init__(self):
+		super().__init__([])
+
+	def is_valid_move(self, card):
+		"""
+		takes a card object as input and returns True/False if
+		the card can be placed on the pile
+		"""
+		return (self.get_topmost_card().get_suit() == card.get_suit() and
+			    self.get_topmost_card().get_rank_value() - 1 == card.get_rank_value())
+
 
 class Tableau(Pile):
 	"""
 	The 7 locations where piles of cards are built down by alternate colors
 	Referred to by number, left to right in ascending order
 	"""
+
+	def __init__(self):
+		super().__init__([])
+
+	def is_valid_move(self, card):
+		"""
+		takes a card object as input and returns True/False if
+		the card can be placed on the pile
+		"""
+		return (self.get_topmost_card().get_color() != card.get_color() and
+				self.get_topmost_card().get_rank_value + 1 == card.get_rank_value())
+
+
+class FoundationGroup:
+	pass
+
+
+class TableauGroup:
 	pass
 
 
@@ -138,19 +187,31 @@ def main():
     pass
 
 def test():
-	np = Pile([Card('H', '7'), Card('D', '6')]) 
-	print(np)
-	print(np.remove_cards(2))
-	print(np)
-
 	dk = Deck()
-	print(dk)
+	# print(dk)
 	dk.shuffle()
 	print(dk)
 
-	# print(np.cards)
-	# print(np.remove_card())
-	# print(np.cards)
+	tabl = Tableau()
+	tabl.add_card(dk.pull_card())
+	tabl.add_card(dk.pull_card())
+	tabl.add_card(dk.pull_card())
+	tabl.add_card(dk.pull_card())
+	tabl.add_card(dk.pull_card())
+	tabl.add_card(dk.pull_card())
+	tabl.add_card(dk.pull_card())
+	tabl.add_card(dk.pull_card())
+	
+	print(tabl)
+	print(dk)
+
+	this_card = dk.pull_card()
+	print(this_card)
+	print(this_card.get_color())
+	print(this_card.get_rank())
+	print(this_card.get_rank_value())
+	print(this_card.get_suit())
+
 
 if __name__ == "__main__":
     test()
