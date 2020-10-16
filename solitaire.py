@@ -1,6 +1,7 @@
 """
 simple solitaire with python and PyGame
 by: Alex Chally
+solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
 """
 
 import random
