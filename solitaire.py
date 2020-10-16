@@ -137,6 +137,16 @@ class Stock(Pile):
 		super().__init__([])
 
 
+class Wastepile(Pile):
+	"""
+	a pile of cards taken from the stock and placed faceup
+	the topmost card can be taken and used
+	"""
+
+	def __init__(self):
+		super().__init__([])
+
+
 class Foundation(Pile):
 	"""
 	The 4 locations where piles of cards are built based on suit
