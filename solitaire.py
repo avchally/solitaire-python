@@ -3,8 +3,154 @@ simple solitaire with python and PyGame
 by: Alex Chally
 """
 
+import random
+
+#============= GLOBAL DEFINITIONS =============#
+SUITS = "HSDC"
+RANKS = "123456789TJQK"
+COLORS = {"H": "red",
+		  "S": "black",
+		  "D": "red",
+		  "C": "black"}
+
+
+#============= CLASS DEFINITIONS =============#
+class Card:
+	
+	def __init__(self, suit, rank, exposed=False):
+		self.suit = suit
+		self.rank = rank
+		self.exposed = exposed
+
+	def get_suit(self):
+		return self.suit
+
+	def get_rank(self):
+		return self.rank
+
+	def set_exposed(self, expose_boolean):
+		self.exposed = expose_boolean
+
+	def __str__(self):
+		return f'{self.rank}{self.suit}'
+
+
+class Deck:
+	"""
+	a full set of 52 cards
+	will only be used at the beginning of the game
+	remaining cards will be made into a Stock object
+	"""
+	def __init__(self):
+		self.cards = []
+		for suit in SUITS:
+			for rank in RANKS:
+				self.cards.append(Card(suit, rank))
+
+	def shuffle(self):
+		temp_list = []
+		for i in range(len(self.cards)):
+			temp_list.append(self.cards.pop(random.randrange(len(self.cards))))
+		self.cards = temp_list
+
+	def pull_card(self):
+		return self.cards.pop()
+
+	def __str__(self):
+		return str([f'{card}' for card in self.cards])
+
+
+class Pile:
+	"""
+	A group of card objects that serve as the foundation for 
+	the various different types of groups of cards on the board
+	"""
+
+	def __init__(self, cards, stack_style='squared'):
+		"""
+		stack_style is either 'squared' (pile is stacked with only the top card visible)
+		or 'fanned' (pile is slightly fanned out, with every card slightly visible)
+		"""
+		self.cards = cards
+		self.stack_style = stack_style
+
+	def remove_cards(self, num_cards):
+		"""
+		removes the num_cards amount from top (end) of pile 
+		and returns them as another pile object
+		"""
+		temp_list = self.cards[len(self.cards) - num_cards:]
+		self.cards = self.cards[:len(self.cards) - num_cards]
+		return Pile(temp_list)
+
+	def add_to_pile(self, pile_of_cards):
+		"""
+		takes a pile object as input and adds it to the current pile
+		"""
+		self.cards.extend(pile_of_cards.get_card_list())
+
+	def get_card_list(self):
+		"""
+		this method is present to disuade from referencing an object's internal variable directly
+		"""
+		return self.cards
+
+	def get_topmost_card(self):
+		"""
+		returns top card in the pile, but DOES NOT remove it from pile
+		"""
+		return self.cards[-1]
+
+	def get_bottommost_card(self):
+		"""
+		returns bottom card in the pile, but DOES NOT remove it from pile
+		"""
+		return self.cards[0]
+
+	def __str__(self):
+		return str([f'{card}' for card in self.cards])
+
+
+class Stock(Pile):
+	"""
+	Stock is the official term for the pile that cards are drawn from
+	"""
+	pass
+
+class Foundation(Pile):
+	"""
+	The 4 locations where piles of cards are built based on suit
+	Game is finished when all Foundations are filled
+	Starts empty
+	"""
+	pass
+
+class Tableau(Pile):
+	"""
+	The 7 locations where piles of cards are built down by alternate colors
+	Referred to by number, left to right in ascending order
+	"""
+	pass
+
+
+#============= GAME =============#
 def main():
-  pass
+    pass
+
+def test():
+	np = Pile([Card('H', '7'), Card('D', '6')]) 
+	print(np)
+	print(np.remove_cards(2))
+	print(np)
+
+	dk = Deck()
+	print(dk)
+	dk.shuffle()
+	print(dk)
+
+	# print(np.cards)
+	# print(np.remove_card())
+	# print(np.cards)
 
 if __name__ == "__main__":
-  main()
+    test()
