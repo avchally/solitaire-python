@@ -13,9 +13,14 @@ TO DO next:
 [ ] Finish Board class
 [X] Implement basic game loop that user can play from command line
 [ ] TEST TEST TEST
+[ ] Fix bugs
 [!] At this point, game should be finished enough to hand over to Tommy for AI
 [ ] Implement State Machine
 [ ] Start GUI
+
+BUGS:
+- putting the waste back on the stock reverses the pile
+- cannot remove cards from foundations to be used in play
 
 """
 
@@ -81,7 +86,7 @@ class Card:
         if self.exposed:
             return f'[{self.rank}{self.suit}]'
         else:
-            return '[XX]'
+            return '[--]'
 
 
 class Deck:
@@ -267,7 +272,7 @@ class Wastepile(Pile):
         determines whether the pile can be picked up from the 
         provided index (index 0 being topmost card or last item in list)
         """
-        return self.get_length() == card_index + 1
+        return card_index == 0
 
 
 class Foundation(Pile):
@@ -445,6 +450,10 @@ class Board:
         *** ['T1', 3, 'F3'] => indicating grabbing cards from the third index (4th card from bottom) of
         ***                    the 2nd tableau (T0 representing 1st) and placing them on the 4th
         ***                    foundation (again, F0 representing 1st)
+        *** First element options: 'TN', 'FN', 'W0'
+        *** Second element options: any non-negative integer
+        *** Third element options: 'TN', 'FN'
+        ***
         *** Special Actions:
         *** ['S0', 0, 'S0'] => Draws card(s) from stock onto wastepile (also returns waste to stock)
         *** ['TN', 0, 'TN'] => Attempts to expose the top card (if it's flipped down)
@@ -559,7 +568,16 @@ class StateMachine:
 
 #============= HELPER FUNCTIONS =============#
 def get_move_from_user():
-    return [input("Retrieval Pile "), int(input("Retrieval Index ")), input("Destination Pile ")]
+    """
+    when playing from a command line, allows the user to input moves 
+    """
+    move_list = input("Move: ").split(" ")
+    try:
+        move_list[1] = int(move_list[1])
+    except:
+        pass
+    return move_list
+    # return [input("Retrieval Pile "), int(input("Retrieval Index ")), input("Destination Pile ")]
 
 #============= GAME =============#
 def main():
@@ -570,8 +588,6 @@ def main():
     new_deck.shuffle()
 
     brd.deal(new_deck)
-
-    print("Use")
 
     while True:
         print('\n')
