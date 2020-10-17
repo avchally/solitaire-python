@@ -6,8 +6,13 @@ solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
 TO DO next:
 [X] Structure out the piles, board, and game objects
 [X] Finish all of the different pile types
-[ ] Test all of the different pile types
+[X] Test all of the different pile types
+[X] Finalize retrieve and place methods for piles
+[X] Test retrieve and place methods for piles
+[ ] Implement a move method that performs a move on board
 [ ] Finish Board class
+[ ] Implement basic game loop that user can play from command line
+[!] At this point, game should be finished enough to hand over to Tommy for AI
 [ ] Implement State Machine
 [ ] Start GUI
 
@@ -32,6 +37,10 @@ SQUARED = 'squared'
 
 #============= CLASS DEFINITIONS =============#
 class Card:
+	"""
+	many of the methods here are present to avoid
+	accessing an internal variable externally
+	"""
 	
 	def __init__(self, suit, rank, exposed=False):
 		self.suit = suit
@@ -51,6 +60,9 @@ class Card:
 
 	def get_color(self):
 		return self.color
+
+	def get_exposed(self):
+		return self.exposed
 
 	def set_exposed(self, expose_boolean):
 		self.exposed = expose_boolean
@@ -120,7 +132,7 @@ class Pile:
 	the various different types of groups of cards on the board
 	"""
 
-	def __init__(self, cards, stack_style='squared'):
+	def __init__(self, cards, stack_style=SQUARED):
 		"""
 		stack_style is either 'squared' (pile is stacked with only the top card visible)
 		or 'fanned' (pile is slightly fanned out, with every card slightly visible)
@@ -167,7 +179,7 @@ class Pile:
 		if len(self.cards) > 0:
 			return self.cards[-n]
 		else:
-			return []
+			return None
 
 	def get_topmost_card(self):
 		"""
@@ -185,7 +197,7 @@ class Pile:
 		if len(self.cards) > 0:
 			return self.cards[0]
 		else:
-			return []
+			return None
 
 	def get_length(self):
 		"""
@@ -221,7 +233,7 @@ class Stock(Pile):
 		"""
 		deals out the top card in the stock to the wastepile
 		"""
-		if deal_3:
+		if self.deal_3:
 			if len(self.cards) > 2:
 				wp.merge_pile(self.remove_cards(3, True))
 			elif len(self.cards) > 0:
@@ -246,6 +258,13 @@ class Wastepile(Pile):
 		"""
 		stock.merge_pile(self.remove_cards(len(self.cards), True))
 
+	def is_valid_retrieval(self, card_index):
+		"""
+		determines whether the pile can be picked up from the 
+		provided index (index 0 being topmost card or last item in list)
+		"""
+		return self.get_length() == card_index + 1
+
 
 class Foundation(Pile):
 	"""
@@ -257,18 +276,33 @@ class Foundation(Pile):
 	def __init__(self):
 		super().__init__([], SQUARED)
 
-	def is_valid_move(self, other_pile):
+	def is_valid_placement(self, other_pile):
 		"""
 		takes a pile object as input and returns True/False if
 		the pile can be placed on the pile
-		for a Foundation, only a pile of size 1 can be placed on it
+		for a Foundation:
+		* only a pile of size 1 can be placed on it
+		* if foundation pile is empty, only an ace (value 1) can 
+		  be placed
+		* otherwise, the card must be same suit and 1 rank
+		  higher than the topmost card in foundation pile
 		"""
 		if other_pile.get_length() == 1:
 			card = other_pile.get_bottommost_card()
-			return (self.get_topmost_card().get_suit() == card.get_suit() and
-				    self.get_topmost_card().get_rank_value() - 1 == card.get_rank_value())
+			if self.get_length() == 0:
+				return card.get_rank_value() == 1
+			else:
+				return (self.get_topmost_card().get_suit() == card.get_suit() and
+					    self.get_topmost_card().get_rank_value() + 1 == card.get_rank_value())
 		else:
 			return False
+
+	def is_valid_retrieval(self, card_index):
+		"""
+		determines whether the pile can be picked up from the 
+		provided index (index 0 being topmost card or last item in list)
+		"""
+		return self.get_length() == card_index + 1
 
 
 class Tableau(Pile):
@@ -280,17 +314,37 @@ class Tableau(Pile):
 	def __init__(self):
 		super().__init__([], FANNED)
 
-	def is_valid_move(self, other_pile):
+	def reveal_top_card(self):
+		"""
+		when called, will expose the top card if not already exposed
+		"""
+		if not self.get_topmost_card().get_exposed():
+			self.get_topmost_card().flip_card()
+
+	def is_valid_placement(self, other_pile):
 		"""
 		takes a pile object as input and returns True/False if
 		it can be placed on this pile
+		for a Tableau:
+		* any size pile, topmost card must be opposite color and 
+		  one less rank of the bottommost card of tableau pile
+		* if tableau pile is empty, topmost card of other pile
+		  must be King (value 13)
 		"""
 		card = other_pile.get_bottommost_card()
 		if self.get_length() == 0:
-			return card.get_rank_value() == 1
+			return card.get_rank_value() == 13
 		else:
 			return (self.get_topmost_card().get_color() != card.get_color() and
-					self.get_topmost_card().get_rank_value + 1 == card.get_rank_value())
+					self.get_topmost_card().get_rank_value() - 1 == card.get_rank_value())
+
+	def is_valid_retrieval(self, card_index):
+		"""
+		determines whether the pile can be picked up from the 
+		provided index (index 0 being topmost card or last item in list)
+		"""
+		if self.get_length() > index:
+			return self.cards[:-index].get_exposed
 
 
 class FoundationGroup:
@@ -313,7 +367,8 @@ class TableauGroup:
 
 class Board:
 	"""
-
+	can only RETRIEVE cards from: Tableau, Foundation, Wastepile
+	can only PLACE cards to: Tableau, Foundation
 	"""
 
 	def __init__(self):
@@ -330,8 +385,10 @@ class Board:
 			self.foundations.append(Foundation())
 
 	def deal(self, deck):
-
-		# deal tableaus
+		"""
+		deals cards from a deck onto the board,
+		making the board ready for play
+		"""
 		dealt = False
 		tab_num = 0
 		while not dealt:
@@ -354,6 +411,23 @@ class Board:
 
 		# dump rest of cards into stock
 		self.stock.merge_pile(Pile(deck.dump_cards()))
+
+	def attempt_move(self, move_input):
+		"""
+		attempts to move a pile of some length from one spot on the board
+		to another
+		return True if the move was successful and False if not
+
+		*** currently, move_input is a 3-element list formatted as follows (likely to change):
+		*** [retrieval pile, retrieval index in the pile, destination pile]
+		*** each pile will have its own key
+		*** example move_input: 
+		*** ['T1', 3, 'F3'] => indicating grabbing cards from the third index (4th card) of the
+		***					   2nd tableau (T0 representing 1st) and placing them on the 4th
+		***					   foundation (again, F0 representing 1st)
+
+		"""
+		pass
 
 	def str_tableaus(self):
 		str_tab = ""
@@ -379,6 +453,14 @@ class Board:
 
 
 class Game:
+	"""
+	possible game options/features that user can modify
+	- draw [3] or [1] card(s) from stock to wastepile
+	- auto flip up a new card in tableaus
+	- auto complete when there are no more unexposed cards on board
+	- provide possible moves for a given card (or perhaps moreso, 
+	  determine if any legal move exists on the board)
+	"""
 	pass
 
 
@@ -392,17 +474,51 @@ class StateMachine:
 def main():
     pass
 
+def test2():
+	test_pile = Pile([Card('H','7', True), Card('D','K', True), Card('H','6', True), Card('S','5', True)], FANNED)
+	
+	test_cards = [Card('S', '4', True), Card('D', '4', True), Card('S', '6', True), Card('C', 'K', True), Card('S', 'A', True)]
+	
+	test_tableau = Tableau()
+	test_tableau.merge_pile(test_pile)
+	test_tab_blank = Tableau()
+	test_foundation = Foundation()
+	test_foundation.merge_pile(test_pile)
+	test_found_blank = Foundation()
+
+	test_piles = [test_tableau, test_tab_blank, test_foundation, test_found_blank]
+
+	for tp in test_piles:
+		print()
+		print(tp)
+		for cd in test_cards:
+			print(cd)
+			print(tp.is_valid_placement(Pile([cd])))
+
+	# print(test_tableau)
+	# print(test_card)
+	# print(test_tableau.is_valid_placement(Pile([test_card])))
+
 def test():
 	brd = Board()
 	print(brd)
 	print("------------------------")
 
 	print("DEALING\n")
-	time.sleep(3)
+	# time.sleep(3)
 	new_deck = Deck()
 	new_deck.shuffle()
 	brd.deal(new_deck)
 	print(brd)
+	brd.stock.deal_to_wp(brd.wp)
+	brd.tableaus[0].merge_pile(brd.tableaus[4].remove_cards(1))
+	brd.tableaus[3].reveal_top_card()
+	brd.tableaus[4].reveal_top_card()
+	# brd.foundations[0].cards.append(Card('S', 'A', True))
+	print(brd)
+	# print(brd.foundations[0].is_valid_retrieval(0))
+	# print(brd.wp.get_length())
+	# print(brd.wp.is_valid_retrieval(0))
 	print("------------------------")
 
 
