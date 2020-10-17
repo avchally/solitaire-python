@@ -1,4 +1,4 @@
-# solitaire-python
+```# solitaire-python
 a simple solitaire recreation in python
 
 TO DO next:
@@ -35,3 +35,4 @@ BUGS:
 - putting the waste back on the stock reverses the pile
 
 - cannot remove cards from foundations to be used in play
+```
