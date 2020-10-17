@@ -9,9 +9,10 @@ TO DO next:
 [X] Test all of the different pile types
 [X] Finalize retrieve and place methods for piles
 [X] Test retrieve and place methods for piles
-[ ] Implement a move method that performs a move on board
+[X] Implement a move method that performs a move on board
 [ ] Finish Board class
-[ ] Implement basic game loop that user can play from command line
+[X] Implement basic game loop that user can play from command line
+[ ] TEST TEST TEST
 [!] At this point, game should be finished enough to hand over to Tommy for AI
 [ ] Implement State Machine
 [ ] Start GUI
@@ -226,14 +227,17 @@ class Stock(Pile):
 	"""
 	
 	def __init__(self, deal_3=False):
-		super().__init__([], FANNED)
+		super().__init__([], SQUARED)
 		self.deal_3 = deal_3
 
 	def deal_to_wp(self, wp):
 		"""
 		deals out the top card in the stock to the wastepile
+		if stock is empty, it returns wastepile back to stock
 		"""
-		if self.deal_3:
+		if self.get_length() == 0:
+			wp.move_to_stock(self)
+		elif self.deal_3:
 			if len(self.cards) > 2:
 				wp.merge_pile(self.remove_cards(3, True))
 			elif len(self.cards) > 0:
@@ -343,8 +347,8 @@ class Tableau(Pile):
 		determines whether the pile can be picked up from the 
 		provided index (index 0 being topmost card or last item in list)
 		"""
-		if self.get_length() > index:
-			return self.cards[:-index].get_exposed
+		if self.get_length() > card_index:
+			return self.cards[-(card_index+1)].get_exposed()
 
 
 class FoundationGroup:
@@ -378,11 +382,27 @@ class Board:
 		self.tableaus = []
 		self.stock = Stock()
 		self.wp = Wastepile()
+		self.move_dict = {}
 
 		for i in range(self.num_tableaus):
 			self.tableaus.append(Tableau())
 		for i in range(self.num_foundations):
 			self.foundations.append(Foundation())
+
+	def init_move_dict(self):
+		"""
+		will create a dictionary where keys represent a command
+		and values represent the pile associated with the command
+		format is: {'TN': self.foundations[N],
+					'FN': self.foundations[N],
+					'W0': self.wp}
+		"""
+		self.move_dict = {}
+		for ind, tbl in enumerate(self.tableaus):
+			self.move_dict["T"+str(ind)] = self.tableaus[ind]
+		for ind, fnd in enumerate(self.foundations):
+			self.move_dict["F"+str(ind)] = self.foundations[ind]
+		self.move_dict["W0"] = self.wp
 
 	def deal(self, deck):
 		"""
@@ -422,34 +442,98 @@ class Board:
 		*** [retrieval pile, retrieval index in the pile, destination pile]
 		*** each pile will have its own key
 		*** example move_input: 
-		*** ['T1', 3, 'F3'] => indicating grabbing cards from the third index (4th card) of the
-		***					   2nd tableau (T0 representing 1st) and placing them on the 4th
+		*** ['T1', 3, 'F3'] => indicating grabbing cards from the third index (4th card from bottom) of
+		***					   the 2nd tableau (T0 representing 1st) and placing them on the 4th
 		***					   foundation (again, F0 representing 1st)
+		*** Special Actions:
+		*** ['S0', 0, 'S0'] => Draws card(s) from stock onto wastepile (also returns waste to stock)
+		*** ['TN', 0, 'TN'] => Attempts to expose the top card (if it's flipped down)
 
 		"""
-		pass
+		# handle basic cases first
+		if len(move_input) != 3:
+			return False
+		if move_input[0] not in self.move_dict or move_input[2] not in self.move_dict:
+			return False
+		if type(move_input[1]) is not int:
+			return False
+		if move_input[2] == "W0":
+			return False
+
+		orig_pile = self.move_dict[move_input[0]]
+		orig_ind = move_input[1]
+		dest_pile = self.move_dict[move_input[2]]
+		if orig_ind >= orig_pile.get_length():
+			return False
+
+		# handle special actions
+		if move_input == ['S0', 0, 'S0']:
+			self.stock.deal_to_wp()
+			return True
+		if move_input[0][0] == 'T' and orig_pile == dest_pile and orig_ind == 0:
+			orig_pile.reveal_top_card()
+
+		# basic conditions have been met
+		adj_ind = orig_pile.get_length() - orig_ind - 1
+		if orig_pile.is_valid_retrieval(orig_ind):
+			move_pile = orig_pile.remove_cards(orig_ind + 1)
+			if dest_pile.is_valid_placement(move_pile):
+				dest_pile.merge_pile(move_pile)
+				return True
+			else:
+				orig_pile.merge_pile(move_pile)
+				return False
+		return False
 
 	def str_tableaus(self):
+		"""
+		draws tableaus horizontally
+		"""
 		str_tab = ""
 		for tab in self.tableaus:
 			str_tab += "\n" + str(tab)
+		return str_tab
+
+	def str_tableaus_alt(self):
+		"""
+		draws tableaus vertically
+		"""
+		str_tab = ""
+		for i in range(self.num_tableaus):
+			str_tab += f'=={i}= '
+		str_tab += '\n'
+
+		keep_drawing = True
+		cur_card_ind = 0
+		while keep_drawing:
+			finished_tabs = 0
+			for tbl in self.tableaus:
+				if cur_card_ind < tbl.get_length():
+					str_tab += str(tbl.get_card_list()[cur_card_ind]) + " "
+				else:
+					str_tab += "     "
+					finished_tabs += 1
+			str_tab += "\n"
+			cur_card_ind += 1
+			if finished_tabs == self.num_tableaus:
+				keep_drawing = False
 		return str_tab
 
 	def str_foundations(self):
 		str_found = ""
 		for found in self.foundations:
 			if found is not None:
-				str_found += "\n" + str(found)
+				str_found += str(found) + " "
 			else:
 				str_found += str([])
 		return str_found
 
 	def __str__(self):
-		line1 = str(f'Foundations: {self.str_foundations()}\n\n')
-		line2 = str(f'Tableaus: {self.str_tableaus()}\n\n')
-		line3 = str(f'Stock: {self.stock}\n\n')
-		line4 = str(f'Wastepile: {self.wp}')
-		return line1 + line2 + line3 + line4
+		line1 = str(f'S: {self.stock} W: {self.wp} | F: {self.str_foundations()}\n\n')
+		line2 = str(f'T: \n{self.str_tableaus_alt()}')
+		# line3 = str(f'S: {self.stock}\n\n')
+		# line4 = str(f'W: {self.wp}')
+		return line1 + line2
 
 
 class Game:
@@ -469,6 +553,10 @@ class Game:
 class StateMachine:
 	pass
 
+
+#============= HELPER FUNCTIONS =============#
+def get_move_from_user():
+	return [input("Retrieval Pile "), int(input("Retrieval Index ")), input("Destination Pile ")]
 
 #============= GAME =============#
 def main():
@@ -511,15 +599,23 @@ def test():
 	brd.deal(new_deck)
 	print(brd)
 	brd.stock.deal_to_wp(brd.wp)
-	brd.tableaus[0].merge_pile(brd.tableaus[4].remove_cards(1))
-	brd.tableaus[3].reveal_top_card()
-	brd.tableaus[4].reveal_top_card()
+	# brd.tableaus[0].merge_pile(brd.tableaus[4].remove_cards(1))
+	# brd.tableaus[3].reveal_top_card()
+	# brd.tableaus[4].reveal_top_card()
 	# brd.foundations[0].cards.append(Card('S', 'A', True))
-	print(brd)
+	# print("------------------------")
+	# print(brd)
+	# print("------------------------")
+	brd.init_move_dict()
+	print(brd.move_dict)
+	while True:
+		print('\n')
+		print(brd)
+		print()
+		print(brd.attempt_move(get_move_from_user()))
 	# print(brd.foundations[0].is_valid_retrieval(0))
 	# print(brd.wp.get_length())
 	# print(brd.wp.is_valid_retrieval(0))
-	print("------------------------")
 
 
 if __name__ == "__main__":
