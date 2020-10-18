@@ -1,137 +1,10 @@
-"""
-simple solitaire with python and PyGame
-by: Alex Chally
-solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
-
-TO DO next:
-[X] Structure out the piles, board, and game objects
-[X] Finish all of the different pile types
-[X] Test all of the different pile types
-[X] Finalize retrieve and place methods for piles
-[X] Test retrieve and place methods for piles
-[X] Implement a move method that performs a move on board
-[ ] Finish Board class
-[X] Implement basic game loop that user can play from command line
-[ ] TEST TEST TEST
-[ ] Fix bugs
-[!] At this point, game should be finished enough to hand over to Tommy for AI
-[ ] Implement State Machine
-[ ] Start GUI
-
-BUGS:
-- putting the waste back on the stock reverses the pile
-- cannot remove cards from foundations to be used in play
-
-"""
-
-import random
-import time
 
 #============= GLOBAL DEFINITIONS =============#
-SUITS = "HSDC"
-RANKS = "A23456789TJQK"
-RANK_VALUES = {"A": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7,
-               "8": 8, "9": 9, "T": 10, "J": 11, "Q": 12, "K": 13}
-COLORS = {"H": "red",
-          "S": "black",
-          "D": "red",
-          "C": "black"}
-
 FANNED = 'fanned'
 SQUARED = 'squared'
 
 
 #============= CLASS DEFINITIONS =============#
-class Card:
-    """
-    many of the methods here are present to avoid
-    accessing an internal variable externally
-    """
-    
-    def __init__(self, suit, rank, exposed=False):
-        self.suit = suit
-        self.rank = rank
-        self.exposed = exposed
-        self.color = COLORS[self.suit]
-        self.rank_value = RANK_VALUES[self.rank]
-
-    def get_suit(self):
-        return self.suit
-
-    def get_rank(self):
-        return self.rank
-
-    def get_rank_value(self):
-        return self.rank_value
-
-    def get_color(self):
-        return self.color
-
-    def get_exposed(self):
-        return self.exposed
-
-    def set_exposed(self, expose_boolean):
-        self.exposed = expose_boolean
-
-    def flip_card(self):
-        self.exposed = not self.exposed
-
-    def can_move(self):
-        """
-        method to determine if this card has a legal move somewhere on board
-        """
-        pass
-
-    def __str__(self):
-        if self.exposed:
-            return f'[{self.rank}{self.suit}]'
-        else:
-            return '[--]'
-
-
-class Deck:
-    """
-    a full set of 52 cards
-    will only be used at the beginning of the game
-    remaining cards will be made into a Stock object
-    """
-
-    def __init__(self):
-        self.cards = []
-        for suit in SUITS:
-            for rank in RANKS:
-                self.cards.append(Card(suit, rank))
-
-    def shuffle(self):
-        temp_list = []
-        for i in range(len(self.cards)):
-            temp_list.append(self.cards.pop(random.randrange(len(self.cards))))
-        self.cards = temp_list
-
-    def pull_card(self, expose=False):
-        if expose:
-            card = self.cards.pop()
-            card.flip_card()
-            return card
-        else:
-            return self.cards.pop()
-
-    def dump_cards(self, expose=False):
-        """
-        removes all the cards in the deck and returns them as a list
-        """
-        temp_list = self.cards[:]
-        self.cards = []
-        if not expose:
-            return temp_list
-        else:
-            for card in temp_list:
-                card.flip_card() 
-
-    def __str__(self):
-        return str([f'{card}' for card in self.cards])
-
-
 class Pile:
     """
     A group of card objects that serve as the foundation for 
@@ -211,6 +84,12 @@ class Pile:
         """
         return len(self.cards)
 
+    def reverse_cards(self):
+        """
+        reverses the list of cards
+        """
+        self.cards.reverse()
+
     def __str__(self):
         if self.stack_style == 'squared':
             if self.get_topmost_card() == None:
@@ -265,7 +144,9 @@ class Wastepile(Pile):
         """
         flips cards and puts them all back into the stock
         """
-        stock.merge_pile(self.remove_cards(len(self.cards), True))
+        temp_pile = self.remove_cards(len(self.cards), True)
+        temp_pile.reverse_cards()
+        stock.merge_pile(temp_pile)
 
     def is_valid_retrieval(self, card_index):
         """
@@ -311,7 +192,7 @@ class Foundation(Pile):
         determines whether the pile can be picked up from the 
         provided index (index 0 being topmost card or last item in list)
         """
-        return self.get_length() == card_index + 1
+        return card_index == 0
 
 
 class Tableau(Pile):
@@ -356,33 +237,15 @@ class Tableau(Pile):
             return self.cards[-(card_index+1)].get_exposed()
 
 
-class FoundationGroup:
-    """
-    class to manage all 4 foundations
-    """
-
-    def __init__(self):
-        self.foundations = [Foundation()]*4
-
-
-class TableauGroup:
-    """
-    class to manage all 7 tableaus
-    """
-
-    def __init__(self):
-        self.tableaus = [Tableau()]*7
-
-
 class Board:
     """
     can only RETRIEVE cards from: Tableau, Foundation, Wastepile
     can only PLACE cards to: Tableau, Foundation
     """
 
-    def __init__(self):
-        self.num_foundations = 4
-        self.num_tableaus = 7
+    def __init__(self, num_tableaus=7, num_decks=1):
+        self.num_foundations = num_decks * 4
+        self.num_tableaus = num_tableaus
         self.foundations = []
         self.tableaus = []
         self.stock = Stock()
@@ -543,116 +406,6 @@ class Board:
     def __str__(self):
         line1 = str(f'S0: {self.stock} W0: {self.wp} | F: {self.str_foundations()}\n\n')
         line2 = str(f'T: \n{self.str_tableaus_alt()}')
-        # line3 = str(f'S: {self.stock}\n\n')
-        # line4 = str(f'W: {self.wp}')
+
         return line1 + line2
 
-
-class Game:
-    """
-    possible game options/features that user can modify
-    - draw [3] or [1] card(s) from stock to wastepile
-    - auto flip up a new card in tableaus
-    - auto complete when there are no more unexposed cards on board
-    - provide possible moves for a given card (or perhaps moreso, 
-      determine if any legal move exists on the board)
-    """
-    pass
-
-
-#============= STATE MACHINE =============#
-# Might not actually be necessary. We'll see
-class StateMachine:
-    pass
-
-
-#============= HELPER FUNCTIONS =============#
-def get_move_from_user():
-    """
-    when playing from a command line, allows the user to input moves 
-    """
-    move_list = input("Move: ").split(" ")
-    try:
-        move_list[1] = int(move_list[1])
-    except:
-        pass
-    return move_list
-    # return [input("Retrieval Pile "), int(input("Retrieval Index ")), input("Destination Pile ")]
-
-#============= GAME =============#
-def main():
-    brd = Board()
-    brd.init_move_dict()
-
-    new_deck = Deck()
-    new_deck.shuffle()
-
-    brd.deal(new_deck)
-
-    while True:
-        print('\n')
-        print(brd)
-        print()
-        print(brd.attempt_move(get_move_from_user()))
-
-
-def test2():
-    # FOR TESTING, DONT USE
-    test_pile = Pile([Card('H','7', True), Card('D','K', True), Card('H','6', True), Card('S','5', True)], FANNED)
-    
-    test_cards = [Card('S', '4', True), Card('D', '4', True), Card('S', '6', True), Card('C', 'K', True), Card('S', 'A', True)]
-    
-    test_tableau = Tableau()
-    test_tableau.merge_pile(test_pile)
-    test_tab_blank = Tableau()
-    test_foundation = Foundation()
-    test_foundation.merge_pile(test_pile)
-    test_found_blank = Foundation()
-
-    test_piles = [test_tableau, test_tab_blank, test_foundation, test_found_blank]
-
-    for tp in test_piles:
-        print()
-        print(tp)
-        for cd in test_cards:
-            print(cd)
-            print(tp.is_valid_placement(Pile([cd])))
-
-    # print(test_tableau)
-    # print(test_card)
-    # print(test_tableau.is_valid_placement(Pile([test_card])))
-
-def test():
-    # FOR TESTING, DONT USE
-    brd = Board()
-    print(brd)
-    print("------------------------")
-
-    print("DEALING\n")
-    # time.sleep(3)
-    new_deck = Deck()
-    new_deck.shuffle()
-    brd.deal(new_deck)
-    print(brd)
-    brd.stock.deal_to_wp(brd.wp)
-    # brd.tableaus[0].merge_pile(brd.tableaus[4].remove_cards(1))
-    # brd.tableaus[3].reveal_top_card()
-    # brd.tableaus[4].reveal_top_card()
-    # brd.foundations[0].cards.append(Card('S', 'A', True))
-    # print("------------------------")
-    # print(brd)
-    # print("------------------------")
-    brd.init_move_dict()
-    print(brd.move_dict)
-    while True:
-        print('\n')
-        print(brd)
-        print()
-        print(brd.attempt_move(get_move_from_user()))
-    # print(brd.foundations[0].is_valid_retrieval(0))
-    # print(brd.wp.get_length())
-    # print(brd.wp.is_valid_retrieval(0))
-
-
-if __name__ == "__main__":
-    main()
