@@ -5,6 +5,7 @@ simple solitaire with python and PyGame
 by: Alex Chally
 solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
 
+
 TO DO next:
 
 [X] Structure out the piles, board, and game objects
@@ -25,11 +26,14 @@ TO DO next:
 
 [!] At this point, game should be finished enough to hand over to Tommy for AI
 
-[ ] Reorganize package/modules
+[X] Reorganize package/modules
 
-[ ] Develop a game file that handles playing the game
+[ ] Start a game file that handles playing the game
 
-[ ] Implement State Machine
+[ ] Finalize preliminary API in game.py
 
-[ ] Start GUI
+[ ] Implement State Machine in game.py
+
+[ ] Start GUI in game.py
+
 ```
