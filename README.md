@@ -1,6 +1,10 @@
 ```# solitaire-python
 a simple solitaire recreation in python
 
+simple solitaire with python and PyGame
+by: Alex Chally
+solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
+
 TO DO next:
 
 [X] Structure out the piles, board, and game objects
@@ -15,24 +19,17 @@ TO DO next:
 
 [X] Implement a move method that performs a move on board
 
-[ ] Finish Board class
+[X] Finish Board class
 
 [X] Implement basic game loop that user can play from command line
 
-[ ] TEST TEST TEST
-
-[ ] Fix bugs
-
 [!] At this point, game should be finished enough to hand over to Tommy for AI
+
+[ ] Reorganize package/modules
+
+[ ] Develop a game file that handles playing the game
 
 [ ] Implement State Machine
 
 [ ] Start GUI
-
-
-BUGS:
-
-- putting the waste back on the stock reverses the pile
-
-- cannot remove cards from foundations to be used in play
 ```
