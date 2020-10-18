@@ -2,6 +2,8 @@
 #============= GLOBAL DEFINITIONS =============#
 FANNED = 'fanned'
 SQUARED = 'squared'
+DEFAULT_DECKS = 1
+DEFAULT_TABLEAUS = 7
 
 
 #============= CLASS DEFINITIONS =============#
@@ -243,14 +245,16 @@ class Board:
     can only PLACE cards to: Tableau, Foundation
     """
 
-    def __init__(self, num_tableaus=7, num_decks=1):
+    def __init__(self, num_tableaus=DEFAULT_TABLEAUS, num_decks=DEFAULT_DECKS, deal_3=False, auto_flip_tab=True):
         self.num_foundations = num_decks * 4
         self.num_tableaus = num_tableaus
+        self.auto_flip_tab = auto_flip_tab
         self.foundations = []
         self.tableaus = []
-        self.stock = Stock()
+        self.stock = Stock(deal_3)
         self.wp = Wastepile()
         self.move_dict = {}
+        self.moves = 0
 
         for i in range(self.num_tableaus):
             self.tableaus.append(Tableau())
@@ -326,6 +330,7 @@ class Board:
         # handle stock draw Special Action first
         if move_input == ['S0', 0, 'S0']:
             self.stock.deal_to_wp(self.wp)
+            self.moves += 1
             return True
 
         # handle basic cases
@@ -354,6 +359,9 @@ class Board:
             move_pile = orig_pile.remove_cards(orig_ind + 1)
             if dest_pile.is_valid_placement(move_pile):
                 dest_pile.merge_pile(move_pile)
+                if len[0][0] == 'T' and self.auto_flip_tab:
+                    orig_pile.reveal_top_card()
+                self.moves += 1
                 return True
             else:
                 orig_pile.merge_pile(move_pile)

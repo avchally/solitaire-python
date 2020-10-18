@@ -13,10 +13,11 @@ TO DO next:
 [X] Finish Board class
 [X] Implement basic game loop that user can play from command line
 [!] At this point, game should be finished enough to hand over to Tommy for AI
-[ ] Reorganize package/modules
-[ ] Develop a game file that handles playing the game
-[ ] Implement State Machine
-[ ] Start GUI
+[X] Reorganize package/modules
+[ ] Start a game file that handles playing the game
+[ ] Finalize preliminary API in game.py
+[ ] Implement State Machine in game.py
+[ ] Start GUI in game.py
 
 """
 
