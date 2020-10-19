@@ -3,12 +3,11 @@ simple solitaire with python and PyGame
 by: Alex Chally
 solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
 
-
-this version plays the game from the command line
+runs the game in either command line or with GUI
 
 """
 
-import game, solitaire_objects, deck_of_cards
+import data.game, data.solitaire_objects, data.deck_of_cards
 
 
 #============= HELPER FUNCTIONS =============#
@@ -23,8 +22,8 @@ def get_move_from_user():
         pass
     return move_list
 
-#============= GAME =============#
-def main():
+def start_cl_game():
+    """ play from command line """
     brd = solitaire_objects.Board()
     brd.init_move_dict()
 
@@ -39,6 +38,10 @@ def main():
         print()
         print(brd.attempt_move(get_move_from_user()))
 
+#============= GAME =============#
+def main():
+    gm = data.game.Game()
+    gm.new_game(deal_3=True)
 
 if __name__ == "__main__":
     main()

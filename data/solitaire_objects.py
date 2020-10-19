@@ -97,10 +97,10 @@ class Pile:
             if self.get_topmost_card() == None:
                 return str([])
             else:
-                return str(self.get_topmost_card())
+                return self.get_topmost_card().format_card()
         if self.stack_style == 'fanned':
             if len(self.cards) > 0:
-                return ' '.join([f'{card}' for card in self.cards])
+                return ' '.join([f'{card.format_card()}' for card in self.cards])
             else:
                 return str([])
 
@@ -393,7 +393,7 @@ class Board:
             finished_tabs = 0
             for tbl in self.tableaus:
                 if cur_card_ind < tbl.get_length():
-                    str_tab += str(tbl.get_card_list()[cur_card_ind]) + " "
+                    str_tab += tbl.get_card_list()[cur_card_ind].format_card() + " "
                 else:
                     str_tab += "     "
                     finished_tabs += 1

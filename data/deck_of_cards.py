@@ -52,11 +52,17 @@ class Card:
         """
         pass
 
-    def __str__(self):
+    def format_card(self):
         if self.exposed:
             return f'[{self.rank}{self.suit}]'
         else:
             return '[--]'
+
+    def __str__(self):
+        if self.exposed:
+            return f'{self.rank}{self.suit}'
+        else:
+            return '--'
 
 
 class Deck:
