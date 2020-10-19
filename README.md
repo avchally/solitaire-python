@@ -55,8 +55,8 @@ TO DO next:
 [X] Start GUI in game.py  
 [X] Finish a working version of the game with GUI (no menu, no restart, no other features)  
 [X] Finalize preliminary API in game.py  
-[ ] Make a method that reads King as topmost card of every foundation and determines game is won  
-[ ] Make a method that cycles through every card and if every card is exposed, game is winnable  
+[X] Implement a is_won method that determines if the game has been won  
+[X] Make a method that cycles through every card and if every card is exposed, game is winnable  
 [ ] Implement State Machine in game.py  
  - [ ] Title Screen -> New Game | Options  
  - [ ] Pause Menu -> New Game | Quit  
