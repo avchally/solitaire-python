@@ -61,5 +61,9 @@ TO DO next:
  - [ ] Title Screen -> New Game | Options  
  - [ ] Pause Menu -> New Game | Quit  
  - [ ] Win Screen -> New Game | Options | Quit  
+[ ] Implement undo method
+[ ] Eventually implement score
+[ ] Generate deck based on provided seed
+[ ] Implement method to close the program
 
 ```
