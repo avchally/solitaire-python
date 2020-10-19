@@ -5,6 +5,7 @@ scoring information: http://hands.com/~lkcl/hp6915/Dump/Files/soltr.htm
 
 import sys
 import pygame
+import time
 from solitaire_objects import Board
 from deck_of_cards import Deck, SUITS, RANKS, RANK_VALUES
 
@@ -19,12 +20,22 @@ WIDTH = 1600
 HEIGHT = 900
 
 STOCK_POS = (50, 50)
-WASTE_POS = (250, 50)
-FOUND_START_POS = (450, 50)
-TABLEAU_START_POS = (50, 400)
-CARD_HORI_DIST = 200
+STOCK_SPACING = 3
+MAX_STOCK_DISPLAYED = 10
+
+WASTE_POS = (275, 50)
+WASTE_SPACING = 40
+
+FOUND_START_POS = (550, 50)
+TABLEAU_START_POS = (50, 300)
+CARD_HORI_DIST = 60
 CARD_VERT_DIST = 30
 
+CARD_HEIGHT = 190
+CARD_WIDTH = 140
+
+
+MAT_IMG = 'assets/board.png'
 CARD_BACK = 'assets/cards/cardBack_blue5.png'
 CARD_BLANK = 'assets/cards/cardBlank.png'
 CARD_PREFIX = 'assets/cards/card'
@@ -33,7 +44,6 @@ CARD_STRINGS = {'H': 'Hearts', 'S': 'Spades', 'D': 'Diamonds', 'C': 'Clubs',
                 'A': 'A', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6',
                 '7': '7', '8': '8', '9': '9', 'T': '10', 'J': 'J', 'Q': 'Q',
                 'K': 'K'}
-
 
 
 #============= CLASS DEFINITIONS =============#
@@ -91,17 +101,31 @@ class Game:
         self.game_loop()
 
     def game_loop(self):
+        dragging = False
         while True:
             # event loop
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    retrieval_move = self.bg.card_pos.detect_collision(pygame.mouse.get_pos())
+                    dragging = True
+                if event.type == pygame.MOUSEBUTTONUP:
+                    destination_move = self.bg.card_pos.detect_collision(pygame.mouse.get_pos())
+                    dragging = False
+                    self.process_move(retrieval_move, destination_move)
+
+
 
             # update
+            self.bg.update()
 
             # draw
             self.bg.draw(self.screen)
+
+            # time.sleep(2)
+            # self.bg.board.attempt_move(['S0', 0, 'S0'])
 
             # apply draw
             pygame.display.update()
@@ -135,6 +159,20 @@ class Game:
         """
         pass
 
+    def process_move(self, retrieval, destination):
+        """
+        retrieval and destination should both be 2 element lists 
+        provided from CardPosition.detect_collision
+        """
+        stock_move = ['S0', 0]
+        waste_move = ['W0', 0]
+        # if [retrieval, destination] == [stock_move, stock_move]:
+        #     self.board.attempt_move(['S0', 0, 'S0'])
+        # if retrieval == waste_move:
+        #     self.board.attempt_move(['W0', 0, 'F0'])
+
+        self.board.attempt_move([retrieval[0], retrieval[1], destination[0]])
+
     def _init_decks(self):
         # deck_list = []
         # # for i in range(decks):
@@ -148,27 +186,142 @@ class Game:
         return deck_list[0]
 
 
+class CardPositions:
+
+    def __init__(self, board):
+        """
+        determines clickable locations and stores positions 
+        as rect's to make collision detection easy
+        """
+        self.board = board
+        self.tableaus = []      # any exposed card is clickable
+        self.foundations = []   # only top card is clickable
+        self.waste = []         # only top card is clickable
+        self.stock = []         # only top card is clickable
+
+    def detect_collision(self, pos):
+        """
+        determines if a mouseclick is within any of the clickable 
+        areas and returns a piece of an attempted move (to be used
+        in the process_move method of Game class)
+        """
+        for rect in self.stock:
+            if rect.collidepoint((pos)):
+                # self.board.attempt_move(['S0', 0, 'S0'])
+                return ['S0', 0]
+        for rect in self.waste:
+            if rect.collidepoint((pos)):
+                return ['W0', 0]
+        for i, rect in enumerate(self.foundations):
+            if rect.collidepoint((pos)):
+                return ['F'+str(i), 0]
+
+        return [0,0]
+
+    def update_positions(self):
+        self.get_stk_pos()
+        self.get_wst_pos()
+        self.get_fnd_pos()
+
+    def get_tab_pos(self):
+        pass
+
+    def get_fnd_pos(self):
+        for i, foundation in enumerate(self.board.foundations):
+            found_pos_topleft = (FOUND_START_POS[0] + i*(CARD_WIDTH+CARD_HORI_DIST), FOUND_START_POS[1])
+            self.foundations.append(pygame.image.load(CARD_BLANK).get_rect(topleft=found_pos_topleft))
+
+    def get_wst_pos(self):
+        if self.board.wp.get_length() > 3:
+            i = 3
+        else:
+            i = self.board.wp.get_length()
+
+        waste_pos_topleft = (WASTE_POS[0] + (i-1)*WASTE_SPACING, WASTE_POS[1])
+        self.waste = [pygame.image.load(CARD_BLANK).get_rect(topleft=waste_pos_topleft)]
+        # print(self.waste[0].center)
+
+    def get_stk_pos(self):
+        if self.board.stock.get_length() > MAX_STOCK_DISPLAYED:
+            i = MAX_STOCK_DISPLAYED
+        else:
+            i = self.board.stock.get_length()
+
+        stock_pos_topleft = (STOCK_POS[0] + (i-1)*STOCK_SPACING, STOCK_POS[1])
+        self.stock = [pygame.image.load(CARD_BLANK).get_rect(topleft=stock_pos_topleft)]
+
+
 class BoardGraphics:
 
     def __init__(self, board, screen):
         self.board = board
         self.load_card_images(screen)
+        self.card_pos = CardPositions(self.board)
 
     def update(self):
-        pass
+        self.card_pos.update_positions()
+
+    def get_movable_card_pos(self):
+        """
+        get a dictionary of 
+        """
+
+        #tableaus
 
     def draw(self, screen):
         stock_card = self.board.stock.get_topmost_card()
+        # if self.board.stock.get_length() > 1:
+        #     stock_card2 = self.board.stock.cards[-2]
         waste_card = self.board.wp.get_topmost_card()
         foundations = self.board.foundations
         tableaus = self.board.tableaus
 
-        self.draw_card(screen, stock_card, STOCK_POS)
-        self.draw_card(screen, waste_card, WASTE_POS)
+        # draw playing mat
+        mat_surf = pygame.image.load(MAT_IMG).convert_alpha()
+        mat_rect = mat_surf.get_rect(topleft=(0,0))
+        screen.blit(mat_surf, mat_rect)
 
+        # draw Stock at STOCK_POS
+        if self.board.stock.get_length() > 1:
+            # self.draw_card(screen, stock_card, STOCK_POS)
+            for i in range(self.board.stock.get_length()):
+                self.draw_card(screen, stock_card, (STOCK_POS[0] + STOCK_SPACING*i, STOCK_POS[1]))
+                if i >= MAX_STOCK_DISPLAYED-1:
+                    break
+        else:
+            self.draw_card(screen, stock_card, STOCK_POS)
+
+        # draw Waste at WASTE_POS
+        if self.board.wp.get_length() > 1:
+            temp_list = []
+            for i in range(self.board.wp.get_length()):
+                temp_list.append(self.board.wp.get_n_card(i+1))
+                if i >= 2:
+                    break
+            for i, crd in enumerate(temp_list[::-1]):
+                self.draw_card(screen, crd, (WASTE_POS[0] + WASTE_SPACING*i, WASTE_POS[1]))
+        else:
+            self.draw_card(screen, waste_card, WASTE_POS)
+
+        # draw Foundation piles at FOUND_START_POS
         for i, foundation in enumerate(foundations):
-            self.draw_card(screen, foundation.get_topmost_card(), 
-                            (FOUND_START_POS[0] + CARD_HORI_DIST*i, FOUND_START_POS[1]))
+            draw_pos = (FOUND_START_POS[0] + (CARD_HORI_DIST+CARD_WIDTH)*i, FOUND_START_POS[1])
+            self.draw_card(screen, foundation.get_topmost_card(), draw_pos)
+
+        # draw Tableau piles at TABLEAU_START_POS
+        tab_card_ind = 0
+        remaining_tabs = len(tableaus)
+
+        while remaining_tabs > 0:
+            remaining_tabs = len(tableaus)
+            for tab_ind, tableau in enumerate(tableaus):
+                draw_pos = (TABLEAU_START_POS[0] + (CARD_HORI_DIST+CARD_WIDTH)*tab_ind, TABLEAU_START_POS[1] + CARD_VERT_DIST*tab_card_ind)
+                if tab_card_ind < tableau.get_length():
+                    self.draw_card(screen, tableau.cards[tab_card_ind], draw_pos)
+                else:
+                    remaining_tabs -= 1
+            tab_card_ind += 1 
+
 
         # self.draw_card(screen, self.board.tableaus[0].cards[0], (200, 200))
         # self.draw_card(screen, self.board.tableaus[3].cards[1], (400, 200))
@@ -203,7 +356,7 @@ class StateMachine:
 
 def main():
     game = Game()
-    game.new_game(False, True, 1, 7)
+    game.new_game(True, True, 1, 7)
 
 
 if __name__ == "__main__":
