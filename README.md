@@ -4,7 +4,7 @@ by: Alex Chally
 solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
   
 API information:  
-1. Import with 'from game import Game'  
+1. Import with 'from data.game import Game'  
 2. Instantiate a Game object with one argument: api_use=True  
 3. Start a new game by calling the method .new_game()  
     a. there are a couple of optional arguments that change the  
