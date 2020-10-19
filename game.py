@@ -215,6 +215,9 @@ class CardPositions:
         for i, rect in enumerate(self.foundations):
             if rect.collidepoint((pos)):
                 return ['F'+str(i), 0]
+        for rect in self.tableaus:
+            if rect[0].collidepoint((pos)):
+                return rect[1]
 
         return [0,0]
 
@@ -222,9 +225,19 @@ class CardPositions:
         self.get_stk_pos()
         self.get_wst_pos()
         self.get_fnd_pos()
+        self.get_tab_pos()
 
     def get_tab_pos(self):
-        pass
+        """
+        stores a list of lists as tableau positions
+        [ [rect object, [TN, M]], ...] with [TN, M] being a move Nth index Tableau, Mth index Card
+        """
+        for tableau_index, tableau in enumerate(self.board.tableaus):
+            for card_index in range(tableau.get_length())[::-1]:
+                x_pos = TABLEAU_START_POS[0] + tableau_index*(CARD_WIDTH+CARD_HORI_DIST)
+                y_pos = TABLEAU_START_POS[1] + card_index*CARD_VERT_DIST
+                associated_move = ['T' + str(tableau_index), tableau.get_length() - card_index - 1]
+                self.tableaus.append([pygame.image.load(CARD_BLANK).get_rect(topleft=(x_pos, y_pos)), associated_move])
 
     def get_fnd_pos(self):
         for i, foundation in enumerate(self.board.foundations):
