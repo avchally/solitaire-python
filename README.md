@@ -15,6 +15,7 @@ API information:
 4. At this point you can create your loop, read data as needed,  
    and make moves  
     a. methods to read data:  
+        - .api_is_won()             => returns True/False whether the game is won yet  
         - .api_get_moves()          => returns how many moves has been made so far  
         - .api_read_stock()         => returns an integer that represents how many cards are left in the stock  
         - .api_read_waste_pile()    => returns a list of strings that represent what cards are in the waste  
@@ -30,7 +31,7 @@ API information:
                                        Z => the index number of the pile to place a card to (starting at 0 from the left)  
                                        In order to draw cards from the stock, the required input is ['S0', 0, 'S0']  
     c. Future methods (not yet implemented):  
-        - .api_is_won()             => will return True/False whether the game is won yet  
+        - pass  
 5. Other notes:  
     a. cards are returned as a string in format 'SR', S=suit and R=rank  
         - examples: 'AH' => Ace of Hearts | 'TC' => Ten of Clubs | '7D' => Seven of Diamonds | 'QS' => Queen of Spades  

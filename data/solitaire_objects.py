@@ -125,7 +125,8 @@ class Stock(Pile):
             wp.move_to_stock(self)
         elif self.deal_3:
             if len(self.cards) > 2:
-                wp.merge_pile(self.remove_cards(3, True))
+                for i in range(3):
+                    wp.merge_pile(self.remove_cards(1, True))
             elif len(self.cards) > 0:
                 wp.merge_pile(self.remove_cards(len(self.cards), True))
         else:
@@ -368,6 +369,22 @@ class Board:
                 orig_pile.merge_pile(move_pile)
                 return False
         return False
+
+    def is_winnable(self):
+        if self.stock.get_length() != 0: return False
+        for tableau in self.tableaus:
+            if tableau.get_length() != 0:
+                for card in tableau.cards:
+                    if not card.get_exposed():
+                        return False
+        return True
+
+    def is_won(self):
+        if self.stock.get_length() != 0: return False
+        for tableau in self.tableaus:
+            if tableau.get_length() != 0: return False
+        else:
+            return True
 
     def str_tableaus(self):
         """
