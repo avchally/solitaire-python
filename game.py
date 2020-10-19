@@ -16,34 +16,37 @@ DEFAULT_TABLEAUS = 7
 
 
 # PyGame-Related Globals
-WIDTH = 1600
-HEIGHT = 900
+WIDTH = 1500
+HEIGHT = 1000
 
-STOCK_POS = (50, 50)
+STOCK_POS = (50, 100)
 STOCK_SPACING = 3
-MAX_STOCK_DISPLAYED = 10
+MAX_STOCK_DISPLAYED = 13
 
-WASTE_POS = (275, 50)
+WASTE_POS = (325, 100)
 WASTE_SPACING = 40
 
-FOUND_START_POS = (550, 50)
-TABLEAU_START_POS = (50, 300)
+FOUND_START_POS = (650, 100)
+TABLEAU_START_POS = (50, 350)
 CARD_HORI_DIST = 60
-CARD_VERT_DIST = 30
+CARD_VERT_DIST = 40
 
 CARD_HEIGHT = 190
 CARD_WIDTH = 140
 
-
 MAT_IMG = 'assets/board.png'
 CARD_BACK = 'assets/cards/cardBack_blue5.png'
-CARD_BLANK = 'assets/cards/cardBlank.png'
+CARD_BLANK = 'assets/cards/cardBlank2.png'
 CARD_PREFIX = 'assets/cards/card'
 CARD_SUFFIX = '.png'
 CARD_STRINGS = {'H': 'Hearts', 'S': 'Spades', 'D': 'Diamonds', 'C': 'Clubs',
                 'A': 'A', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6',
                 '7': '7', '8': '8', '9': '9', 'T': '10', 'J': 'J', 'Q': 'Q',
                 'K': 'K'}
+
+FONT_FILE = 'OpenSans-Regular.ttf'
+FONT_SIZE = 40
+DEFAULT_TEXT_COLOR = (0, 0, 0)
 
 
 #============= CLASS DEFINITIONS =============#
@@ -114,6 +117,7 @@ class Game:
                 if event.type == pygame.MOUSEBUTTONUP:
                     destination_move = self.bg.card_pos.detect_collision(pygame.mouse.get_pos())
                     dragging = False
+                    print(destination_move)
                     self.process_move(retrieval_move, destination_move)
 
 
@@ -232,14 +236,20 @@ class CardPositions:
         stores a list of lists as tableau positions
         [ [rect object, [TN, M]], ...] with [TN, M] being a move Nth index Tableau, Mth index Card
         """
+        self.tableaus = []
         for tableau_index, tableau in enumerate(self.board.tableaus):
+            x_pos = TABLEAU_START_POS[0] + tableau_index*(CARD_WIDTH+CARD_HORI_DIST)
+            if tableau.get_length() == 0:
+                y_pos = TABLEAU_START_POS[1]
+                associated_move = ['T' + str(tableau_index), 0]
+                self.tableaus.append([pygame.image.load(CARD_BLANK).get_rect(topleft=(x_pos, y_pos)), associated_move])
             for card_index in range(tableau.get_length())[::-1]:
-                x_pos = TABLEAU_START_POS[0] + tableau_index*(CARD_WIDTH+CARD_HORI_DIST)
                 y_pos = TABLEAU_START_POS[1] + card_index*CARD_VERT_DIST
                 associated_move = ['T' + str(tableau_index), tableau.get_length() - card_index - 1]
                 self.tableaus.append([pygame.image.load(CARD_BLANK).get_rect(topleft=(x_pos, y_pos)), associated_move])
 
     def get_fnd_pos(self):
+        self.foundations = []
         for i, foundation in enumerate(self.board.foundations):
             found_pos_topleft = (FOUND_START_POS[0] + i*(CARD_WIDTH+CARD_HORI_DIST), FOUND_START_POS[1])
             self.foundations.append(pygame.image.load(CARD_BLANK).get_rect(topleft=found_pos_topleft))
@@ -269,6 +279,7 @@ class BoardGraphics:
     def __init__(self, board, screen):
         self.board = board
         self.load_card_images(screen)
+        self.main_font = pygame.font.Font(FONT_FILE, FONT_SIZE)
         self.card_pos = CardPositions(self.board)
 
     def update(self):
@@ -291,8 +302,12 @@ class BoardGraphics:
 
         # draw playing mat
         mat_surf = pygame.image.load(MAT_IMG).convert_alpha()
+        mat_surf = pygame.transform.scale(mat_surf, (WIDTH, HEIGHT))
         mat_rect = mat_surf.get_rect(topleft=(0,0))
         screen.blit(mat_surf, mat_rect)
+
+        # draw text
+        self.draw_text(screen, f'Moves: {self.board.moves}', (WIDTH/2, FOUND_START_POS[1]/2))
 
         # draw Stock at STOCK_POS
         if self.board.stock.get_length() > 1:
@@ -329,6 +344,8 @@ class BoardGraphics:
             remaining_tabs = len(tableaus)
             for tab_ind, tableau in enumerate(tableaus):
                 draw_pos = (TABLEAU_START_POS[0] + (CARD_HORI_DIST+CARD_WIDTH)*tab_ind, TABLEAU_START_POS[1] + CARD_VERT_DIST*tab_card_ind)
+                if tableau.get_length() == 0 and tab_card_ind == 0:
+                    self.draw_card(screen, None, draw_pos)
                 if tab_card_ind < tableau.get_length():
                     self.draw_card(screen, tableau.cards[tab_card_ind], draw_pos)
                 else:
@@ -338,6 +355,11 @@ class BoardGraphics:
 
         # self.draw_card(screen, self.board.tableaus[0].cards[0], (200, 200))
         # self.draw_card(screen, self.board.tableaus[3].cards[1], (400, 200))
+
+    def draw_text(self, screen, message, pos, color=DEFAULT_TEXT_COLOR):
+        text_surf = self.main_font.render(message, True, color)
+        text_rect = text_surf.get_rect(center=pos)
+        screen.blit(text_surf, text_rect)
 
     def draw_card(self, screen, card_obj, pos):
         if card_obj is None:
@@ -369,7 +391,7 @@ class StateMachine:
 
 def main():
     game = Game()
-    game.new_game(True, True, 1, 7)
+    game.new_game(deal_3=False, auto_flip_tab=True, decks=DEFAULT_DECKS, tableau_qty=DEFAULT_TABLEAUS)
 
 
 if __name__ == "__main__":

@@ -210,8 +210,9 @@ class Tableau(Pile):
         """
         when called, will expose the top card if not already exposed
         """
-        if not self.get_topmost_card().get_exposed() and self.get_length() != 0:
-            self.get_topmost_card().flip_card()
+        if self.get_length() != 0:
+            if not self.get_topmost_card().get_exposed():
+                self.get_topmost_card().flip_card()
 
     def is_valid_placement(self, other_pile):
         """
