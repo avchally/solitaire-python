@@ -1,48 +1,17 @@
 """
 this will be the main module that will be used as an API
 solitaire glossary: https://semicolon.com/Solitaire/Rules/Glossary.html
-scoring information: http://hands.com/~lkcl/hp6915/Dump/Files/soltr.htm
-
-API information:  
-1. Import with 'from game import Game'  
-2. Instantiate a Game object with one argument: api_use=True  
-3. Start a new game by calling the method .new_game()  
-    a. there are a couple of optional arguments that change the  
-       game options  
-    b. the most important argument is deal_3 and is a boolean  
-       that represents whether to deal out 3 cards at a time   
-       (if True) or 1 card at a time (if False)  
-4. At this point you can create your loop, read data as needed,  
-   and make moves  
-    a. methods to read data:  
-        - .api_is_won()             => returns True/False whether the game is won yet  
-        - .api_get_moves()          => returns how many moves has been made so far  
-        - .api_read_stock()         => returns an integer that represents how many cards are left in the stock  
-        - .api_read_waste_pile()    => returns a list of strings that represent what cards are in the waste  
-        - .api_read_foundations()   => returns a list of strings that represent what top level cards are in the foundations  
-        - .api_read_tableaus()      => returns a list of lists, with each enclosed list representing a single tableau and its cards  
-                                       NOTE: tableau index 0 is furthest left pile and the card index 0 is the very top card on the pile  
-    b. method to make a move:  
-        - .api_make_move(move)      => A list must be provided as input with the format ['RX', Y, 'DZ']  
-                                       R => pile type to retrieve a card from (T=tableau, F=foundation, W=waste, S=stock)  
-                                       X => the index number of the pile to retrieve a card from (starting at 0 from the left)  
-                                       Y => the index number of the card to be retrieved (0 being the card on top of the pile)  
-                                       D => pile type to place a card to (T=tableau, F=foundation, W=waste, S=stock)  
-                                       Z => the index number of the pile to place a card to (starting at 0 from the left)  
-                                       In order to draw cards from the stock, the required input is ['S0', 0, 'S0']  
-    c. Future methods (not yet implemented):  
-        - pass  
-5. Other notes:  
-    a. cards are returned as a string in format 'SR', S=suit and R=rank  
-        - examples: 'AH' => Ace of Hearts | 'TC' => Ten of Clubs | '7D' => Seven of Diamonds | 'QS' => Queen of Spades  
-    b. if a card is flipped down on the board, it will be returned as '--'  
-    c. if a pile is empty, None will be returned as the card  
+scoring information: http://hands.com/~lkcl/hp6915/Dump/Files/soltr.htm 
 
 """
 
 import sys
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
 import pygame
 import time
+import copy
+import data.seed_processor
 from .solitaire_objects import Board
 from .deck_of_cards import Deck, SUITS, RANKS, RANK_VALUES
 
@@ -58,7 +27,7 @@ HEIGHT = 1000
 
 STOCK_POS = (50, 100)
 STOCK_SPACING = 3
-MAX_STOCK_DISPLAYED = 13
+MAX_STOCK_DISPLAYED = 23
 
 WASTE_POS = (325, 100)
 WASTE_SPACING = 40
@@ -103,7 +72,7 @@ class Game:
         """
         self.api_use = api_use
 
-    def new_game(self, deal_3=False, auto_flip_tab=True, decks=DEFAULT_DECKS, tableau_qty=DEFAULT_TABLEAUS):
+    def new_game(self, deal_3=False, auto_flip_tab=True, decks=DEFAULT_DECKS, tableau_qty=DEFAULT_TABLEAUS, custom_seed=None, commandline=False):
         """
         initializes a new game
         deal_3 is a boolean that determines whether the stock draws 3 or 1 card at a time
@@ -117,16 +86,23 @@ class Game:
         self.auto_flip_tab = auto_flip_tab
         self.decks = decks
         self.tableau_qty = tableau_qty
+        self.commandline = commandline
+        self.deck = self._init_decks(custom_seed)
+        self.backup_deck = copy.deepcopy(self.deck)
+        self.start_game()
 
-        self.deck = self._init_decks()
-        self.deck.shuffle()
-
-        self.board = Board(num_tableaus=tableau_qty, num_decks=decks, deal_3=deal_3)
+    def start_game(self):
+        """
+        starts the game with settings from new_game method
+        """
+        self.board = Board(num_tableaus=self.tableau_qty, num_decks=self.decks, deal_3=self.deal_3)
         self.board.init_move_dict()
         self.board.deal(self.deck)
 
         if self.api_use:
             self.init_game_api()
+        elif self.commandline:
+            self.init_cl_game()
         else:
             self.init_pygame()
 
@@ -145,16 +121,40 @@ class Game:
         print("Z => the index number of the pile to place a card to (starting at 0 from the left)")
         print("In order to draw cards from the stock, the required input is ['S0', 0, 'S0']")
 
-
-
     def api_make_move(self, move_input):
         """
         just calls the board's attemp move method and returns successful or not
         """
         return self.board.attempt_move(move_input)
 
+    def api_undo_move(self):
+        self.board.attempt_move(['UN', 0, 'UN'])
+
+    def api_restart_game(self, reshuffle_deck=True):
+        """
+        restarts the game with the option to shuffle a new deck.
+        if a custom seed was entered at the start, the same
+        deck will be used
+        although this will likely be used for purposes other
+        than an API, still prefixing name with 'api'
+        """
+        if reshuffle_deck:
+            self.deck = self.deck_copy
+            self.deck_copy = copy.deepcopy(self.deck)
+        else:
+            self.deck = self._init_decks(custom_seed)
+        start_game()
+
+    def api_end_game(self):
+        """
+        since the api version of the game does not have an infinite
+        loop, theres nothing really to do to 'end' the game
+        """
+        pass
+
     def api_is_won(self):
         return self.board.is_won()
+
 
     def api_get_moves(self):
         """returns how many moves has been made so far"""
@@ -166,7 +166,7 @@ class Game:
 
     def api_read_waste_pile(self):
         """returns a list of strings that represent what cards are in the waste"""
-        return [str(card) for card in self.board.wp.cards]
+        return [str(card) for card in self.board.wp.cards] if self.board.wp.get_length() > 0 else ['None']
 
     def api_read_foundations(self):
         """returns a list of strings that represent what top level cards are in the foundations"""
@@ -178,6 +178,13 @@ class Game:
         NOTE: tableau index 0 is furthest left pile and the card index 0 is the very top card on the pile
         """
         return [[str(card) for card in tableau.cards][::-1] for tableau in self.board.tableaus]
+
+    def api_print_board(self):
+        """
+        prints the board out in the console
+        useful when testing
+        """
+        print(self.board)
 
 
     #============== PyGame-Related Methods ==============#
@@ -207,8 +214,11 @@ class Game:
                     destination_move = self.bg.card_pos.detect_collision(pygame.mouse.get_pos())
                     dragging = False
                     self.process_move(retrieval_move, destination_move)
-                    print(f'Winnable: {self.board.is_winnable()}')
-                    print(f'Won: {self.board.is_won()}')
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        self.board.undo_move()
+                    if event.key == pygame.K_s:
+                        print(f'Seed: {self.get_seed()}')
 
             # update
             self.bg.update()
@@ -227,14 +237,52 @@ class Game:
         """
         self.board.attempt_move([retrieval[0], retrieval[1], destination[0]])
 
-    def _init_decks(self):
-        deck_list = [Deck() for i in range(self.decks)]
 
-        if len(deck_list) > 1:
-            for deck in deck_list[1:]:
-                deck_list[0].combine_decks(deck)
+    #============== Commandline-Related Methods ==============#
+    def init_cl_game(self):
+        while True:
+            print('\n')
+            print(self.board)
+            print()
+            user_event = self.get_move_from_user()
+            if user_event == 'undo':
+                self.board.undo_move()
+            else:
+                print(self.board.attempt_move(user_event))
 
-        return deck_list[0]
+    def get_move_from_user(self):
+        """
+        allows the user to input moves from command line
+        """
+        user_input = input("Move: ")
+        if user_input == 'undo':
+            return user_input
+        try:
+            move_list = user_input.split(" ")
+            move_list[1] = int(move_list[1])
+        except:
+            move_list = ['XX', 0, 'XX']
+        return move_list
+
+
+    #============== Other Methods ==============#
+
+    def get_seed(self):
+        return data.seed_processor.deck_to_seed(self.backup_deck)
+    
+    def _init_decks(self, custom_seed):
+        if custom_seed is None:
+            deck_list = [Deck() for i in range(self.decks)]
+
+            if len(deck_list) > 1:
+                for deck in deck_list[1:]:
+                    deck_list[0].combine_decks(deck)
+            deck = deck_list[0]
+            deck.shuffle()
+        else:
+            deck = data.seed_processor.seed_to_deck(custom_seed)
+        
+        return deck
 
 
 class CardPositions:
@@ -343,7 +391,8 @@ class BoardGraphics:
         screen.blit(mat_surf, mat_rect)
 
         # draw text
-        self.draw_text(screen, f'Moves: {self.board.moves}', (WIDTH/2, FOUND_START_POS[1]/2))
+        self.draw_text(screen, f'Moves: {self.board.moves}', (WIDTH*0.7, FOUND_START_POS[1]/2))
+        self.draw_text(screen, 'Press SPACEBAR to undo moves', (350, FOUND_START_POS[1]/2))
 
         # draw Stock at STOCK_POS
         if self.board.stock.get_length() > 1:

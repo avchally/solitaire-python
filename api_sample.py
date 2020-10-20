@@ -13,6 +13,7 @@ def main():
 	gm.api_make_move(flip_stock)
 	gm.api_make_move(flip_stock)
 	gm.api_make_move(flip_stock)
+	gm.api_undo_move()
 
 	print(gm.board)
 

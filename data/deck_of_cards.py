@@ -70,13 +70,24 @@ class Deck:
     a full set of 52 cards
     will only be used at the beginning of the game
     remaining cards will be made into a Stock object
+    
+    can choose to input a custom seed to generate 
+    a consistent deck every time
+
+    to generate a seed from a deck, refer to 
+    /data/seed_processor.py
+
     """
 
-    def __init__(self):
+    def __init__(self, custom_seed=None):
         self.cards = []
-        for suit in SUITS:
-            for rank in RANKS:
-                self.cards.append(Card(suit, rank))
+
+        if custom_seed is None:
+            for suit in SUITS:
+                for rank in RANKS:
+                    self.cards.append(Card(suit, rank))
+        else:
+            self.cards = seed_to_list(custom_seed)
 
     def shuffle(self):
         temp_list = []
@@ -109,6 +120,14 @@ class Deck:
         combines all the cards from other_deck into this deck
         """
         self.cards.extend(other_deck.cards)
+
+    def expose_all(self):
+        for card in self.cards:
+            card.set_exposed(True)
+
+    def unexpose_all(self):
+        for card in self.cards:
+            card.set_exposed(False)
 
     def __str__(self):
         return str([f'{card}' for card in self.cards])

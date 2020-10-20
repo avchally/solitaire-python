@@ -1,3 +1,4 @@
+import copy
 
 #============= GLOBAL DEFINITIONS =============#
 FANNED = 'fanned'
@@ -257,6 +258,7 @@ class Board:
         self.wp = Wastepile()
         self.move_dict = {}
         self.moves = 0
+        self.board_states = [] # will contain a history of every board state since start of game
 
         for i in range(self.num_tableaus):
             self.tableaus.append(Tableau())
@@ -305,6 +307,7 @@ class Board:
 
         # dump rest of cards into stock
         self.stock.merge_pile(Pile(deck.dump_cards()))
+        self.save_board_state()
 
     def attempt_move(self, move_input):
         """
@@ -325,12 +328,18 @@ class Board:
         ***
         *** Special Actions:
         *** ['S0', 0, 'S0'] => Draws card(s) from stock onto wastepile (also returns waste to stock)
+        *** ['UN', 0, 'UN']
         *** ['TN', 0, 'TN'] => Attempts to expose the top card (if it's flipped down)
 
         """
+        # handle undo move
+        if move_input == ['UN', 0, 'UN']:
+            self.undo_move()
+            return True
 
         # handle stock draw Special Action first
         if move_input == ['S0', 0, 'S0']:
+            self.save_board_state()
             self.stock.deal_to_wp(self.wp)
             self.moves += 1
             return True
@@ -358,6 +367,7 @@ class Board:
         # basic conditions have been met
         adj_ind = orig_pile.get_length() - orig_ind - 1
         if orig_pile.is_valid_retrieval(orig_ind):
+            self.save_board_state()
             move_pile = orig_pile.remove_cards(orig_ind + 1)
             if dest_pile.is_valid_placement(move_pile):
                 dest_pile.merge_pile(move_pile)
@@ -367,8 +377,37 @@ class Board:
                 return True
             else:
                 orig_pile.merge_pile(move_pile)
+                self.board_states.pop()
                 return False
         return False
+
+    def save_board_state(self):
+        """
+        adds a list of deep copies of stock, wastepile, foundations, and tableaus
+        to the board_states list/stack
+        """
+        self.board_states.append([copy.deepcopy(self.stock), copy.deepcopy(self.wp), 
+                                  copy.deepcopy(self.foundations), copy.deepcopy(self.tableaus)])
+
+    def undo_move(self):
+        """
+        method responsible for undoing a move
+        !! only directly use this method if you know what you're doing
+        """
+        # general idea:
+        # store the state of the board in a stack before every successful attempted move 
+        # when this is called, set the current board equal to the top state in the stack
+        # print("Undo")
+        # print(self)
+        # if len(self.board_states) != 0:
+        if self.moves != 0:
+            self.moves -= 1
+            self.stock = []
+            self.wp = []
+            self.foundations = []
+            self.tableaus = []
+            self.stock, self.wp, self.foundations, self.tableaus = self.board_states.pop()
+        self.init_move_dict()
 
     def is_winnable(self):
         if self.stock.get_length() != 0: return False
